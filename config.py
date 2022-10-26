@@ -8,6 +8,7 @@ class ChainVar(object):
         self.chained_with = chained_with
 
 class GlobalConfig(object): # ADD_TO_CONF_SYSTEM //DO NOT remove this comment//
+    runner = 'efficient_parallel_runner'
     draw_mode = 'Img'  # 'Web','Native'
     logdir = './ZHECKPOINT/test/'
     cfg_ready = True

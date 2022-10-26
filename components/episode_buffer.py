@@ -197,6 +197,9 @@ class EpisodeBatch:
     def time_of_longest_episode(self):
         return th.sum(self.data.transition_data["filled"], 1).max(0)[0]
 
+    def max_t_filled(self):
+        return th.sum(self.data.transition_data["filled"], 1).max(0)[0]
+
     def __repr__(self):
         return "EpisodeBatch. Batch Size:{} Max_seq_len:{} Keys:{} Groups:{}".format(self.batch_size,
                                                                                      self.max_seq_length,

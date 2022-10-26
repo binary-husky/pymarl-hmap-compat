@@ -62,9 +62,7 @@ class ParallelRunnerConf:
     use_eppr = False
     eppr_prob = 0.0025
 
-# Based (very) heavily on SubprocVecEnv from OpenAI Baselines
-# https://github.com/openai/baselines/blob/master/baselines/common/vec_env/subproc_vec_env.py
-class MyParallelRunner:
+class EfficientParallelRunner:
 
     def __init__(self, args, logger):
         print亮红('initializing ParallelRunner')

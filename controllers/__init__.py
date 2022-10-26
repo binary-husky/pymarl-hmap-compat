@@ -1,5 +1,4 @@
 REGISTRY = {}
-'''
 from .basic_controller import BasicMAC
 from .n_controller import NMAC
 from .ppo_controller import PPOMAC
@@ -15,6 +14,6 @@ REGISTRY["conv_mac"] = ConvMAC
 REGISTRY["basic_central_mac"] = CentralBasicMAC
 REGISTRY["lica_mac"] = LICAMAC
 REGISTRY["cqmix_mac"] = CQMixMAC
-'''
+
 from .my_n_controller import my_NMAC
 REGISTRY["n_mac"] = my_NMAC

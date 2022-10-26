@@ -12,7 +12,7 @@ from os.path import dirname, abspath
 from learners import REGISTRY as le_REGISTRY
 from runners import REGISTRY as r_REGISTRY
 from controllers import REGISTRY as mac_REGISTRY
-# from components.episode_buffer import ReplayBuffer
+from components.episode_buffer import ReplayBuffer
 from components.transforms import OneHot
 
 from smac.env import StarCraft2Env
@@ -78,6 +78,8 @@ def evaluate_sequential(args, runner):
     runner.close_env()
 
 def run_sequential(args, logger):
+    if cfg.runner != 'efficient_parallel_runner':
+        return run_sequential_old(args, logger)
 
     # Init runner so we can get env info
     runner = r_REGISTRY[args.runner](args=args, logger=logger)
@@ -150,7 +152,6 @@ def run_sequential(args, logger):
 
     while runner.t_env <= args.t_max:
 
-        # Run for a whole episode at a time
         print亮紫('Run for a whole episode at a time')
         mcv = get_mcv_logger()
         mcv.rec(runner.mac.action_selector.schedule.eval(runner.t_env), 'epsilon') 
@@ -205,6 +206,153 @@ def run_sequential(args, logger):
 
     runner.close_env()
     logger.console_logger.info("Finished Training")
+
+
+
+def run_sequential_old(args, logger):
+    assert cfg.runner != 'efficient_parallel_runner'
+
+    # Init runner so we can get env info
+    runner = r_REGISTRY[args.runner](args=args, logger=logger)
+
+    # Set up schemes and groups here
+    env_info = runner.get_env_info()
+    args.n_agents = env_info["n_agents"]
+    args.n_actions = env_info["n_actions"]
+    args.state_shape = env_info["state_shape"]
+    if not isinstance(args.n_actions, int):
+        import gym
+        exec("_n_actions_ = %s"%args.n_actions)
+        args.n_actions = _n_actions_
+
+    if getattr(args, 'agent_own_state_size', False):
+        args.agent_own_state_size = get_agent_own_state_size(args.env_args)
+    # Default/Base scheme
+    scheme = {
+        "state": {"vshape": env_info["state_shape"]},
+        "obs": {"vshape": env_info["obs_shape"], "group": "agents"},
+        "actions": {"vshape": (1,), "group": "agents", "dtype": torch.long},
+        "avail_actions": {"vshape": (env_info["n_actions"],), "group": "agents", "dtype": torch.int},
+        "probs": {"vshape": (env_info["n_actions"],), "group": "agents", "dtype": torch.float},
+        "reward": {"vshape": (1,)},
+        'actions_onehot':{'vshape': (env_info["n_actions"],), 'dtype': torch.float, 'group': 'agents'},
+        "terminated": {"vshape": (1,), "dtype": torch.uint8},
+    }
+    # # Default/Base scheme
+    # scheme = {
+    #     "state": {"vshape": env_info["state_shape"]},
+    #     "obs": {"vshape": env_info["obs_shape"], "group": "agents"},
+    #     "actions": {"vshape": (1,), "group": "agents", "dtype": torch.long},
+    #     "avail_actions": {"vshape": (env_info["n_actions"],), "group": "agents", "dtype": torch.int},
+    #     "probs": {"vshape": (env_info["n_actions"],), "group": "agents", "dtype": torch.float},
+    #     "reward": {"vshape": (1,)},
+    #     "terminated": {"vshape": (1,), "dtype": torch.uint8},
+    # }
+    groups = {
+        "agents": args.n_agents
+    }
+    preprocess = {
+        "actions": ("actions_onehot", [OneHot(out_dim=args.n_actions)])
+    }
+
+    buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
+                          preprocess=preprocess,
+                          device="cpu" if args.buffer_cpu_only else args.device)
+    # Setup multiagent controller here
+    mac = mac_REGISTRY[args.mac](buffer.scheme, groups, args)
+
+    # Give runner the scheme
+    runner.setup(scheme=scheme, groups=groups, preprocess=preprocess, mac=mac)
+
+    # Learner
+    learner = le_REGISTRY[args.learner](mac, buffer.scheme, logger, args)
+
+    if args.use_cuda:
+        learner.cuda()
+
+    if cfg.load_checkpoint:
+        save_path = '%s/%s/cpt'%(cfg.HmpRoot, cfg.logdir)
+        learner.load_models(save_path)
+
+    # start training
+    episode = 0
+    last_test_T = -args.test_interval - 1
+    last_log_T = 0
+    model_save_time = 0
+
+    start_time = time.time()
+    last_time = start_time
+
+    logger.console_logger.info("Beginning training for {} timesteps".format(args.t_max))
+
+    train_time_testing = cfg.train_time_testing
+    test_interval = cfg.test_interval
+    test_only = cfg.test_only
+    test_epoch = cfg.test_epoch
+
+    while runner.t_env <= args.t_max:
+
+        print亮紫('Run for a whole episode at a time')
+        mcv = get_mcv_logger()
+        mcv.rec(runner.mac.action_selector.schedule.eval(runner.t_env), 'epsilon') 
+        mcv.rec_show()
+        print亮绿(
+            'Env counters:', 
+            ' episode:',episode,
+            ' runner.t_env:',runner.t_env,
+            ' args.test_interval:', args.test_interval,
+            ' last_test_T:', last_test_T,
+            ' args.t_max:', args.t_max,
+            ' args.log_interval:', args.log_interval,
+            ' args.batch_size:', args.batch_size,   # 这个batch size指的是每次训练中使用的episode的数量
+            ' args.batch_size_run:', args.batch_size_run    # 这个batch size指的是并行的环境（进程）的数量
+        )
+        with torch.no_grad():
+            episode_batch = runner.run(test_mode=False)
+            buffer.insert_episode_batch(episode_batch)
+
+        if buffer.can_sample(args.batch_size):
+            next_episode = episode + args.batch_size_run
+            # if args.accumulated_episodes and next_episode % args.accumulated_episodes != 0:
+            #     continue
+
+            episode_sample = buffer.sample(args.batch_size)
+
+            # Truncate batch to only filled timesteps
+            max_ep_t = episode_sample.max_t_filled()
+            episode_sample = episode_sample[:, :max_ep_t]
+
+            if episode_sample.device != args.device:
+                episode_sample.to(args.device)
+
+            learner.train(episode_sample, runner.t_env, episode)
+            del episode_sample
+
+        # Execute test runs once in a while
+        n_test_runs = max(1, args.test_nepisode // runner.batch_size)
+        # if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
+
+        #     logger.console_logger.info("t_env: {} / {}".format(runner.t_env, args.t_max))
+        #     logger.console_logger.info("Estimated time left: {}. Time passed: {}".format(
+        #         time_left(last_time, last_test_T, runner.t_env, args.t_max), time_str(time.time() - start_time)))
+        #     last_time = time.time()
+
+        #     last_test_T = runner.t_env
+        #     for _ in range(n_test_runs):
+        #         runner.run(test_mode=True)
+
+        if (runner.t_env - model_save_time >= args.save_model_interval) or model_save_time == 0:
+            model_save_time = runner.t_env
+            save_path = '%s/%s/cpt'%(cfg.HmpRoot, cfg.logdir)
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            learner.save_models(save_path)
+
+    runner.close_env()
+    logger.console_logger.info("Finished Training")
+
+
+
 
 
 def args_sanity_check(config, _log):

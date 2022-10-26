@@ -46,6 +46,7 @@ def my_main(_run, _config, _log):
     config['batch_size_run'] = GlobalConfig.n_thread
     config['batch_size'] = GlobalConfig.batch_size
     config['t_max'] = GlobalConfig.t_max
+    config['runner'] = GlobalConfig.runner
 
     np.random.seed(GlobalConfig.seed)
     th.manual_seed(GlobalConfig.seed)
@@ -128,13 +129,6 @@ if __name__ == '__main__':
     # now add all the config to sacred
     ex.add_config(config_dict)
 
-    # Save to disk by default for sacred
-    map_name = parse_command(params, "env_args.map_name", config_dict['env_args']['map_name'])
-    algo_name = parse_command(params, "name", config_dict['name']) 
-    # file_obs_path = join(results_path, "sacred", map_name, algo_name)
-    
-    # logger.info("Saving to FileStorageObserver in {}.".format(file_obs_path))
-    # ex.observers.append(FileStorageObserver.create(file_obs_path))
 
     ex.run_commandline(params)
 

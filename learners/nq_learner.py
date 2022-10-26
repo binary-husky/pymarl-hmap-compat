@@ -12,7 +12,7 @@ from torch.distributions import Categorical
 from utils.th_utils import get_parameters_num
 from UTIL.tensor_ops import gather_righthand, __hash__, _2tensor, __hashn__
 # from UTIL.tensor_ops import dump_sychronize_data, sychronize_experiment, sychronize_internal_hashdict
-from commom.norm import DynamicNorm
+from commom.norm import DynamicNormFix
 from config import GlobalConfig
 from controllers.my_n_controller import PymarlAlgorithmConfig
 def get_item(x):
@@ -70,10 +70,10 @@ class NQLearner:
             # 有两个mac需要共享归一模块，本来可以在self.mac内部初始化，但是注意上面有个艹蛋的copy.deepcopy
             assert self.target_mac.use_normalization
             assert self.mac.input_shape == self.target_mac.input_shape
-            self._batch_norm = DynamicNorm(self.mac.input_shape, only_for_last_dim=True, exclude_one_hot=True, exclude_nan=True)
+            self._batch_norm = DynamicNormFix(self.mac.input_shape, only_for_last_dim=True, exclude_one_hot=True, exclude_nan=True)
             self.mac._batch_norm = self._batch_norm
             self.target_mac._batch_norm = self._batch_norm
-            self.state_batch_norm = DynamicNorm(args.state_shape, only_for_last_dim=True, exclude_one_hot=True, exclude_nan=True)
+            self.state_batch_norm = DynamicNormFix(args.state_shape, only_for_last_dim=True, exclude_one_hot=True, exclude_nan=True)
 
         self.log_stats_t = -self.args.learner_log_interval - 1
         

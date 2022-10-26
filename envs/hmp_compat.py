@@ -119,9 +119,7 @@ class HMP_compat(MultiAgentEnv):
         return self.remote_call(cmd="get_obs_of", args=(), uuid=self.parallel_uuid)
 
     def step(self, actions):
-        # print('step')
         res = self.remote_call(cmd="step_of", args=(actions,), uuid=self.parallel_uuid)
-        # print('step end')
         return res
 
     def get_env_info(self):
