@@ -3,9 +3,9 @@ import os
 import collections
 from os.path import dirname, abspath, join
 from copy import deepcopy
-from sacred import Experiment, SETTINGS
-from sacred.observers import FileStorageObserver
-from sacred.utils import apply_backspaces_and_linefeeds
+# from sacred import Experiment, SETTINGS
+# from sacred.observers import FileStorageObserver
+# from sacred.utils import apply_backspaces_and_linefeeds
 import sys
 import json
 import torch as th
@@ -16,13 +16,13 @@ from run import REGISTRY as run_REGISTRY
 from config_args import load_config_via_json
 
 # set to "no" if you want to see stdout/stderr in console
-SETTINGS['CAPTURE_MODE'] = "fd"
-logger = get_logger()
+# SETTINGS['CAPTURE_MODE'] = "fd"
+# logger = get_logger()
 
-ex = Experiment("pymarl",save_git_info=False)
-ex.logger = logger
-ex.captured_out_filter = apply_backspaces_and_linefeeds
-results_path = join(dirname(dirname(abspath(__file__))), "results")
+# ex = Experiment("pymarl",save_git_info=False)
+# ex.logger = logger
+# ex.captured_out_filter = apply_backspaces_and_linefeeds
+# results_path = join(dirname(dirname(abspath(__file__))), "results")
 
 
 def 解密字符串(p):
@@ -34,7 +34,7 @@ def 解密字符串(p):
         dec_str = dec_str+temp
     return dec_str
 
-@ex.main
+# @ex.main
 def my_main(_run, _config, _log):
     # Setting the random seed throughout the modules
     config = config_copy(_config)
@@ -75,7 +75,7 @@ def _get_config(params, arg_name, subfolder):
         with open(os.path.join(os.path.dirname(__file__), "config", subfolder, "{}.yaml".format(config_name)), "r") as f:
             try:
                 print亮靛('loading configuration from file:', f.name)
-                config_dict = yaml.load(f)
+                config_dict = yaml.safe_load(f)
             except yaml.YAMLError as exc:
                 assert False, "{}.yaml error: {}".format(config_name, exc)
         return config_dict
@@ -83,7 +83,7 @@ def _get_config(params, arg_name, subfolder):
 
 def recursive_dict_update(d, u):
     for k, v in u.items():
-        if isinstance(v, collections.Mapping):
+        if isinstance(v, collections.abc.Mapping):
             d[k] = recursive_dict_update(d.get(k, {}), v)
         else:
             d[k] = v
@@ -115,7 +115,7 @@ if __name__ == '__main__':
     with open(os.path.join(os.path.dirname(__file__), "config", "default.yaml"), "r") as f:
         try:
             print亮靛('loading configuration from file:', f.name)
-            config_dict = yaml.load(f)
+            config_dict = yaml.safe_load(f)
         except yaml.YAMLError as exc:
             assert False, "default.yaml error: {}".format(exc)
 
@@ -127,10 +127,11 @@ if __name__ == '__main__':
     config_dict = recursive_dict_update(config_dict, alg_config)
 
     # now add all the config to sacred
-    ex.add_config(config_dict)
+    my_main(None, config_dict, None)
+    # ex.add_config(config_dict)
 
 
-    ex.run_commandline(params)
+    # ex.run_commandline(params)
 
     # flush
     sys.stdout.flush()
