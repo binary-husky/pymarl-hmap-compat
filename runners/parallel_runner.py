@@ -16,7 +16,7 @@ class ParallelRunner:
         self.args = args
         self.logger = logger
         self.batch_size = self.args.batch_size_run
-
+        if 'env_uuid' in self.args.__dict__: self.args.env_args['env_uuid'] = self.args.__dict__['env_uuid']
         # Make subprocesses for the envs
         print亮红('initializing %d workers'%self.batch_size)
         self.parent_conns, self.worker_conns = zip(*[Pipe() for _ in range(self.batch_size)])

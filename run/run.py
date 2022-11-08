@@ -40,13 +40,13 @@ def run(_run, _config, _log):
     # configure tensorboard logger
     unique_token = "{}__{}".format(args.name, datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     args.unique_token = unique_token
-    if args.use_tensorboard:
-        tb_logs_direc = os.path.join(dirname(dirname(abspath(__file__))), "results", "tb_logs")
-        tb_exp_direc = os.path.join(tb_logs_direc, "{}").format(unique_token)
-        logger.setup_tb(tb_exp_direc)
+    # if args.use_tensorboard:
+    #     tb_logs_direc = os.path.join(dirname(dirname(abspath(__file__))), "results", "tb_logs")
+    #     tb_exp_direc = os.path.join(tb_logs_direc, "{}").format(unique_token)
+    #     logger.setup_tb(tb_exp_direc)
 
     # sacred is on by default
-    logger.setup_sacred(_run)
+    # logger.setup_sacred(_run)
 
     # Run and train
     run_sequential(args=args, logger=logger)
@@ -210,6 +210,7 @@ def run_sequential(args, logger):
 
 
 def run_sequential_old(args, logger):
+    # make sure we are running the right function
     assert cfg.runner != 'efficient_parallel_runner'
 
     # Init runner so we can get env info
@@ -220,10 +221,10 @@ def run_sequential_old(args, logger):
     args.n_agents = env_info["n_agents"]
     args.n_actions = env_info["n_actions"]
     args.state_shape = env_info["state_shape"]
-    if not isinstance(args.n_actions, int):
-        import gym
-        exec("_n_actions_ = %s"%args.n_actions)
-        args.n_actions = _n_actions_
+    assert isinstance(args.n_actions, int)
+    # import gym
+    # exec("_n_actions_ = %s"%args.n_actions)
+    # args.n_actions = _n_actions_
 
     if getattr(args, 'agent_own_state_size', False):
         args.agent_own_state_size = get_agent_own_state_size(args.env_args)
@@ -238,16 +239,6 @@ def run_sequential_old(args, logger):
         'actions_onehot':{'vshape': (env_info["n_actions"],), 'dtype': torch.float, 'group': 'agents'},
         "terminated": {"vshape": (1,), "dtype": torch.uint8},
     }
-    # # Default/Base scheme
-    # scheme = {
-    #     "state": {"vshape": env_info["state_shape"]},
-    #     "obs": {"vshape": env_info["obs_shape"], "group": "agents"},
-    #     "actions": {"vshape": (1,), "group": "agents", "dtype": torch.long},
-    #     "avail_actions": {"vshape": (env_info["n_actions"],), "group": "agents", "dtype": torch.int},
-    #     "probs": {"vshape": (env_info["n_actions"],), "group": "agents", "dtype": torch.float},
-    #     "reward": {"vshape": (1,)},
-    #     "terminated": {"vshape": (1,), "dtype": torch.uint8},
-    # }
     groups = {
         "agents": args.n_agents
     }
@@ -283,7 +274,7 @@ def run_sequential_old(args, logger):
     start_time = time.time()
     last_time = start_time
 
-    logger.console_logger.info("Beginning training for {} timesteps".format(args.t_max))
+    # logger.console_logger.info("Beginning training for {} timesteps".format(args.t_max))
 
     train_time_testing = cfg.train_time_testing
     test_interval = cfg.test_interval
@@ -293,26 +284,18 @@ def run_sequential_old(args, logger):
     while runner.t_env <= args.t_max:
 
         print亮紫('Run for a whole episode at a time')
+
         mcv = get_mcv_logger()
         mcv.rec(runner.mac.action_selector.schedule.eval(runner.t_env), 'epsilon') 
         mcv.rec_show()
-        print亮绿(
-            'Env counters:', 
-            ' episode:',episode,
-            ' runner.t_env:',runner.t_env,
-            ' args.test_interval:', args.test_interval,
-            ' last_test_T:', last_test_T,
-            ' args.t_max:', args.t_max,
-            ' args.log_interval:', args.log_interval,
-            ' args.batch_size:', args.batch_size,   # 这个batch size指的是每次训练中使用的episode的数量
-            ' args.batch_size_run:', args.batch_size_run    # 这个batch size指的是并行的环境（进程）的数量
-        )
+
         with torch.no_grad():
             episode_batch = runner.run(test_mode=False)
             buffer.insert_episode_batch(episode_batch)
 
         if buffer.can_sample(args.batch_size):
             next_episode = episode + args.batch_size_run
+            # 这里如果设置了accumulated_episodes，每num_thread个ep之后可能会跳过更新（当accumulated_episodes > num_thread)
             # if args.accumulated_episodes and next_episode % args.accumulated_episodes != 0:
             #     continue
 
@@ -348,8 +331,15 @@ def run_sequential_old(args, logger):
                 os.makedirs(save_path)
             learner.save_models(save_path)
 
+        episode += args.batch_size_run
+        
+        # if (runner.t_env - last_log_T) >= args.log_interval:
+        #     logger.log_stat("episode", episode, runner.t_env)
+        #     logger.print_recent_stats()
+        #     last_log_T = runner.t_env
+
     runner.close_env()
-    logger.console_logger.info("Finished Training")
+    # logger.console_logger.info("Finished Training")
 
 
 

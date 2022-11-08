@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from config import GlobalConfig
 # from UTIL.tensor_ops import dump_sychronize_data, sychronize_experiment, sychronize_internal_hashdict
 
 '''
@@ -9,7 +10,7 @@ tensor([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.2489, 0.0043, 0.0043,
         0.4773, 0.0235, 0.0235, 0.0235, 0.0235, 0.0235, 0.2244, 0.0256, 0.0000,
         0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000], device='cuda:0')
 '''
-# 
+
 def build_td_lambda_targets(rewards, terminated, mask, target_qs, n_agents, gamma, td_lambda):
     # Assumes  <target_qs > in B*T*A and <reward >, <terminated >, <mask > in (at least) B*T-1*1.  第一维B是episode的数量，第二维是时间，第三位是核心维
     if target_qs.dim()>=3 and target_qs.shape[-1]==1:
@@ -114,7 +115,15 @@ def add_tail_last_dim(tensor, padding=np.nan):
     return torch.cat((tensor,tail),-1)
 
 def build_td_lambda_targets_human_read_efficient(rewards, terminated, mask, target_qs, n_agents, gamma, td_lambda, zero_q_terminal=False):
-    if rewards.shape[-1] == 1: rewards = rewards.squeeze(-1)
+    if rewards.shape[-1] == 1: 
+        # reward 不带nan padding，手动添加
+        assert GlobalConfig.runner != 'efficient_parallel_runner'
+        rewards = torch.where(mask.bool(), input=rewards, other=rewards+float('nan'))
+        rewards = rewards.squeeze(-1)
+    else:
+        # reward 自带nan padding
+        assert GlobalConfig.runner == 'efficient_parallel_runner'
+
     rewards = add_tail_last_dim(rewards)
     # 基线，所有量的标准是s_{t}的时间
     ret = torch.zeros_like(rewards) #.new_zeros(*target_qs.shape)

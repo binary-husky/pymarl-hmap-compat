@@ -63,8 +63,14 @@ def my_main(_run, _config, _log):
     # run
     run_REGISTRY[_config['run']](_run, config, _log)
 
-def _get_config(params, arg_name, subfolder):
+def _get_config(params, arg_name, subfolder=None):
     config_name = None
+    if subfolder is None:
+        for _i, _v in enumerate(params):
+            if _v.split("=")[0] == arg_name:
+                config_name = _v.split("=")[1]
+                return config_name
+
     for _i, _v in enumerate(params):
         if _v.split("=")[0] == arg_name:
             config_name = _v.split("=")[1]
@@ -122,6 +128,8 @@ if __name__ == '__main__':
     # Load algorithm and env base configs
     env_config = _get_config(params, "--env-config", "envs")
     alg_config = _get_config(params, "--config", "algs")
+    config_dict['pymarl_config_injection'] = _get_config(params, "--pymarl_config_injection",)
+    config_dict['env_uuid'] = _get_config(params, "--env_uuid",)
     # config_dict = {**config_dict, **env_config, **alg_config}
     config_dict = recursive_dict_update(config_dict, env_config)
     config_dict = recursive_dict_update(config_dict, alg_config)

@@ -227,7 +227,7 @@ class MAXQLearner:
         if self.central_mac is not None:
             self.target_central_mac.load_state(self.central_mac)
         self.target_central_mixer.load_state_dict(self.central_mixer.state_dict())
-        self.logger.console_logger.info("Updated target network")
+        # self.logger.console_logger.info("Updated target network")
 
     def cuda(self):
         self.mac.cuda()
