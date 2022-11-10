@@ -143,7 +143,7 @@ def run_sequential(args, logger):
     start_time = time.time()
     last_time = start_time
 
-    logger.console_logger.info("Beginning training for {} timesteps".format(args.t_max))
+    # logger.console_logger.info("Beginning training for {} timesteps".format(args.t_max))
 
     train_time_testing = cfg.train_time_testing
     test_interval = cfg.test_interval

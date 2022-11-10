@@ -1,28 +1,15 @@
+import os, sys
+sys.path.append(os.getcwd())
 import numpy as np
-import os
 import collections
-from os.path import dirname, abspath, join
-from copy import deepcopy
-# from sacred import Experiment, SETTINGS
-# from sacred.observers import FileStorageObserver
-# from sacred.utils import apply_backspaces_and_linefeeds
 import sys
 import json
 import torch as th
-from utils.logging import get_logger
 import yaml
 from UTIL.colorful import *
 from run import REGISTRY as run_REGISTRY
 from config_args import load_config_via_json
-
-# set to "no" if you want to see stdout/stderr in console
-# SETTINGS['CAPTURE_MODE'] = "fd"
-# logger = get_logger()
-
-# ex = Experiment("pymarl",save_git_info=False)
-# ex.logger = logger
-# ex.captured_out_filter = apply_backspaces_and_linefeeds
-# results_path = join(dirname(dirname(abspath(__file__))), "results")
+from copy import deepcopy
 
 
 def 解密字符串(p):
@@ -56,6 +43,7 @@ def my_main(_run, _config, _log):
         GlobalConfig.mcv = mcom(ip='127.0.0.1',
                     port=12086,
                     path='%s/%s/PymarlLog/'%(GlobalConfig.HmpRoot, GlobalConfig.logdir),
+                    image_path='%s/%s/pymarl.jpg'%(GlobalConfig.HmpRoot, GlobalConfig.logdir),
                     digit=16,
                     rapid_flush=True,
                     draw_mode=GlobalConfig.draw_mode,
@@ -136,10 +124,6 @@ if __name__ == '__main__':
 
     # now add all the config to sacred
     my_main(None, config_dict, None)
-    # ex.add_config(config_dict)
-
-
-    # ex.run_commandline(params)
 
     # flush
     sys.stdout.flush()
