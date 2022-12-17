@@ -76,9 +76,14 @@ class EfficientParallelRunner:
         env_fn = env_REGISTRY[self.args.env]
 
         self.hmp_remote_uuid = self.args.env_args['env_uuid']
-        unix_path = 'TEMP/Sockets/unix/%s'%self.hmp_remote_uuid
-        from UTIL.network import UnixTcpClientP2P
-        self.remote_link_client = UnixTcpClientP2P(unix_path, obj='pickle')
+        if platform.system() == "Windows":
+            from UTIL.network import UnixTcpClientP2P
+            unix_path = ('localhost', 12235)
+            self.remote_link_client = UnixTcpClientP2P(unix_path, obj='pickle')
+        else:
+            unix_path = 'TEMP/Sockets/unix/%s'%self.hmp_remote_uuid
+            from UTIL.network import UnixTcpClientP2P
+            self.remote_link_client = UnixTcpClientP2P(unix_path, obj='pickle')
 
         self.env_info = self.remote_link_client.send_and_wait_reply(("get_env_info",))
         self.episode_limit = self.env_info["episode_limit"]
