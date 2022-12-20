@@ -14,8 +14,6 @@ from runners import REGISTRY as r_REGISTRY
 from controllers import REGISTRY as mac_REGISTRY
 from components.episode_buffer import ReplayBuffer
 from components.transforms import OneHot
-
-from smac.env import StarCraft2Env
 from UTIL.colorful import *
 from utils.logging import get_mcv_logger
 

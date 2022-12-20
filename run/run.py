@@ -15,12 +15,12 @@ from controllers import REGISTRY as mac_REGISTRY
 from components.episode_buffer import ReplayBuffer
 from components.transforms import OneHot
 
-from smac.env import StarCraft2Env
 from UTIL.colorful import *
 from utils.logging import get_mcv_logger
 from config import GlobalConfig as cfg
 
 def get_agent_own_state_size(env_args):
+    from smac.env import StarCraft2Env
     sc_env = StarCraft2Env(**env_args)
     # qatten parameter setting (only use in qatten)
     return  4 + sc_env.shield_bits_ally + sc_env.unit_type_bits
