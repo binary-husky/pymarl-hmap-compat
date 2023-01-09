@@ -131,7 +131,7 @@ def run_sequential(args, logger):
         learner.cuda()
 
     if cfg.load_checkpoint:
-        save_path = '%s/%s/cpt'%(cfg.HmpRoot, cfg.logdir)
+        save_path = f'{cfg.HmpRoot}/{cfg.logdir}/model_ckp'
         learner.load_models(save_path)
 
     # start training
@@ -149,6 +149,7 @@ def run_sequential(args, logger):
     test_interval = cfg.test_interval
     test_only = cfg.test_only
     test_epoch = cfg.test_epoch
+
 
     while runner.t_env <= args.t_max:
 
@@ -170,39 +171,20 @@ def run_sequential(args, logger):
         )
         with torch.no_grad():
             traj_manager = runner.run()
-            
+
+        if traj_manager.encountered_test_phase:
+            traj_manager.encountered_test_phase = False
+            save_path = f'{cfg.HmpRoot}/{cfg.logdir}/model_ckp'
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            learner.save_models(save_path)
+
         episode += args.batch_size_run
 
         if traj_manager.can_sample(args.batch_size): # args.batch_size=128
             traj_manager.current_pool_subset = traj_manager.sample_pool_subset(args.batch_size)
             # with torch.autograd.set_detect_anomaly(True):
             learner.train(traj_manager, traj_manager.current_pool_subset, runner.t_env, episode)
-
-        # Execute test runs once in a while
-        n_test_runs = test_epoch // runner.batch_size
-
-        # n_test_runs = max(1, args.test_nepisode // runner.batch_size)
-        # if episode / args.test_interval >= 1.0:
-
-        # if train_time_testing and (not test_only) and (episode % test_interval == 0): 
-        #     last_time = time.time()
-        #     last_test_T = runner.t_env
-        #     # print('disable test run!')
-        #     for _ in range(n_test_runs):
-        #         runner.run(test_mode=True)
-
-
-
-        if (runner.t_env - model_save_time >= args.save_model_interval) or model_save_time == 0:
-            model_save_time = runner.t_env
-            save_path = '%s/%s/cpt'%(cfg.HmpRoot, cfg.logdir)
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            learner.save_models(save_path)
-        # if (runner.t_env - last_log_T) >= args.log_interval:
-        #     logger.log_stat("episode", episode, runner.t_env)
-        #     logger.print_recent_stats()
-        #     last_log_T = runner.t_env
 
     runner.close_env()
     logger.console_logger.info("Finished Training")

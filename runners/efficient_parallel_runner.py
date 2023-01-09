@@ -97,6 +97,7 @@ class EfficientParallelRunner:
 
         self.log_train_stats_t = -100000
         self.traj_manager = OffPolicyTrajManager(n_env=self.batch_size, traj_limit=self.episode_limit, pool_size_limit=args.buffer_size)
+        self.traj_manager.encountered_test_phase = False
 
     def setup(self, scheme, groups, preprocess, mac):
         # self.new_batch = partial(EpisodeBatch, scheme, groups, self.batch_size, self.episode_limit + 1,
@@ -186,6 +187,7 @@ class EfficientParallelRunner:
                 步进回馈 = self.remote_link_client.send_and_wait_reply(("get_step_future", ))   # 重新读取，获得training环境的回馈
                 entering_test_phase = (步进回馈 == 'entering_test_phase') or (步进回馈[0]['info']['testing'])
                 assert not entering_test_phase
+                self.traj_manager.encountered_test_phase = True
             return 步进回馈
 
         while True:
