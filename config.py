@@ -30,3 +30,5 @@ class GlobalConfig(object): # ADD_TO_CONF_SYSTEM //DO NOT remove this comment//
     test_epoch = 32
     
     t_max = 1e12    # was 1e7, big enough for hmp to take full control
+
+    compat_windows_port = 12235
