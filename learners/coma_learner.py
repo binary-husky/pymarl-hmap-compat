@@ -155,7 +155,7 @@ class COMALearner:
 
     def _update_targets(self):
         self.target_critic.load_state_dict(self.critic.state_dict())
-        self.logger.console_logger.info("Updated target network")
+        # self.logger.console_logger.info("Updated target network")
 
     def cuda(self):
         self.mac.cuda()
