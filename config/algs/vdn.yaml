@@ -16,11 +16,11 @@ _deprecated_t_max: 10050000
 target_update_interval: 200
 
 # use the Q_Learner to train
-mac: "n_mac"
+mac: "old_n_mac"
 agent: "n_rnn"
 agent_output_type: q
 
-learner: "nq_learner"
+learner: "nq_learner_old"
 mixer: "vdn"
 mixing_embed_dim: 32
 hypernet_embed: 64

@@ -77,9 +77,9 @@ class EfficientParallelRunner:
 
         self.hmp_remote_uuid = self.args.env_args['env_uuid']
         if platform.system() == "Windows":
-            from UTIL.network import TcpClientP2P
-            unix_path = ('localhost', args.compat_windows_port)
-            self.remote_link_client = TcpClientP2P(unix_path, obj='pickle')
+            from UTIL.network import UnixTcpClientP2P
+            unix_path = ('localhost', 12235)
+            self.remote_link_client = UnixTcpClientP2P(unix_path, obj='pickle')
         else:
             unix_path = 'TEMP/Sockets/unix/%s'%self.hmp_remote_uuid
             from UTIL.network import UnixTcpClientP2P

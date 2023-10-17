@@ -30,12 +30,10 @@ def my_main(_run, _config, _log):
     load_config_via_json(json.loads(pymarl_config_injection), vb=True)
 
     from config import GlobalConfig
-
-    config['compat_windows_port'] = GlobalConfig.compat_windows_port
     config['batch_size_run'] = GlobalConfig.n_thread
     config['batch_size'] = GlobalConfig.batch_size
-    config['runner'] = GlobalConfig.runner
     config['t_max'] = GlobalConfig.t_max
+    config['runner'] = GlobalConfig.runner
 
     np.random.seed(GlobalConfig.seed)
     th.manual_seed(GlobalConfig.seed)

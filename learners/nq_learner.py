@@ -45,7 +45,7 @@ class NQLearner:
         print(get_parameters_num(self.mixer.parameters()))
 
         if self.args.optimizer == 'adam':
-            if mac.use_vae:
+            if hasattr(mac, 'use_vae') and mac.use_vae:
                 mac_rnn_param, mac_vae_param = mac.parameters()
                 mixer_param = self.mixer.parameters()
                 # self.optimiser = Adam(params={'mac_rnn_param':mac_rnn_param, 'mixer_param':mixer_param, 'mac_vae_param':mac_vae_param},  lr=args.lr)
@@ -83,6 +83,10 @@ class NQLearner:
         
     def train(self, traj_manager, current_pool_subset, t_env: int, episode_num: int):
         # Get the relevant quantities
+        # rewards = traj_manager.parse(traj_pool=current_pool_subset,       key_name="rewards",       method="remove tail")
+
+        # I use stack_padding here, using ***np.nan*** to pad!
+        # with torch.no_grad():
         rewards =           _2tensor(traj_manager.parse(traj_pool=current_pool_subset, key_name="rewards",           method="normal",     padding=np.nan))
         rewards_tailed_nan= _2tensor(traj_manager.parse(traj_pool=current_pool_subset, key_name="rewards",           method="+nan",       padding=np.nan))
         actions =           _2tensor(traj_manager.parse(traj_pool=current_pool_subset, key_name="actions",           method="+zero",      padding=0))
@@ -98,12 +102,14 @@ class NQLearner:
         valid_mask_tailed = ~torch.isnan(rewards_tailed_nan) # torch.cat((mask,mask[:, 0:1]*0), axis=1)
 
         batch_size = len(current_pool_subset)
+        # max_seq_length = 
         # Calculate estimated Q-Values
         mac_out = []
         vae_loss = []
         vae_loss_target = []
         # 网络1：主网络
         self.mac.init_hidden(batch_size)
+        # valid_mask ($n_th_traj, $time)
         # with torch.no_grad():
         for t in range(obs.shape[1]):   # RNN should run repeating over time
             agent_outs = self.mac.forward({ "obs": obs[:, t], "actions_onehot -1": avail_actions_m1[:, t].clone(), "time": t}, valid_mask=valid_mask_tailed[:, t])
@@ -115,8 +121,7 @@ class NQLearner:
             mac_out.append(agent_outs)  # agent_outs. Q = ( $n_thread, $n_agent, $n_actions)
 
         mac_out = torch.stack(mac_out, axis=1)  # Concat over time, mac_out Q = [$n_thread(n_batch)=128, $time=60, $n_agent, $n_actions]
-        for i, t in enumerate(mac_out.reshape(-1, 7).mean(0)):
-            GlobalConfig.mcv.rec(t.item(), f'Q-{i}-value') 
+        
         # Pick the Q-Values for the actions taken by each agent
         chosen_action_qvals = gather_righthand(mac_out, index=actions.unsqueeze(-1)).squeeze(-1) 
 
@@ -141,9 +146,17 @@ class NQLearner:
             cur_max_actions = torch.argmax(mac_out_detach, axis=-1)        # mac_out_detach ($n_thread(n_batch)=128, $time = 60, $n_agent = 3, $n_actions = 9)
             # target_max_qvals = gather_righthand(target_mac_out, index=np.expand_dims(cur_max_actions,-1)).squeeze(-1)
             target_max_qvals = gather_righthand(target_mac_out, index=cur_max_actions.unsqueeze(-1)).squeeze(-1)
+            # torch.Size([128, 60, 3, 9]),  torch.Size([128, 60, 3, 1])
             # Calculate n-step Q-Learning targets 
             target_max_qvals = self.target_mixer(target_max_qvals, state)
-            targets = build_td_lambda_targets(rewards, None, None, target_max_qvals, self.args.n_agents, self.args.gamma, self.args.td_lambda)
+
+            if getattr(self.args, 'q_lambda', False):
+                assert False
+                qvals = torch.gather(target_mac_out, 3, actions).squeeze(3)
+                qvals = self.target_mixer(qvals, state)
+                targets = build_q_lambda_targets(rewards, terminated, None, target_max_qvals, qvals, self.args.gamma, self.args.td_lambda)
+            else:
+                targets = build_td_lambda_targets(rewards, None, None, target_max_qvals, self.args.n_agents, self.args.gamma, self.args.td_lambda)
 
         chosen_action_qvals = chosen_action_qvals[:,:-1,...] # Remove the last dim !!!!
         state = state[:,:-1,...] # Remove the last dim !!!!
@@ -160,21 +173,14 @@ class NQLearner:
         # Mixer
         mixed_qvals = self.mixer(chosen_action_qvals, state)
         # mixed_qvals[~valid_mask] = 0 # Remove invalid data content
+
         td_error = (mixed_qvals - targets.detach())
-        # td_error[actions[:, :-1, :]==0]
-        # =========================================
-        n_act = 7
-        act_loss = []
-        for a in range(n_act):
-            act_loss.append(td_error[actions[:, :-1, 0]==a])
-        act_loss = [a.mean().item() for a in act_loss]
-        # print(["%.4f"%t for t in act_loss])
-        for i, t in enumerate(act_loss):
-            GlobalConfig.mcv.rec(t, f'act-{i}-loss') 
-        # =========================================
         td_error = 0.5 * td_error.pow(2)
 
         loss = td_error[valid_mask].mean() + loss_vae
+        # sychronize_experiment('syc_loss', loss)
+        # print('syc_loss successful train')
+
         # Optimise
         self.optimiser.zero_grad()
         loss.backward()
@@ -194,7 +200,6 @@ class NQLearner:
             GlobalConfig.mcv.rec(get_item(Reconstruction_Loss), 'ReconLoss') 
             GlobalConfig.mcv.rec(get_item(kld_Loss), 'KldLoss') 
             GlobalConfig.mcv.rec(get_item(loss), 'AllLoss') 
-            GlobalConfig.mcv.rec(traj_manager.traj_pool.__len__(), 'TrajPoolSize') 
 
         # dump_sychronize_data()
         
@@ -203,6 +208,7 @@ class NQLearner:
         self.target_mac.load_state(self.mac)
         if self.mixer is not None:
             self.target_mixer.load_state_dict(self.mixer.state_dict())
+        # self.logger.console_logger.info("Updated target network")
 
     def cuda(self):
         self.mac.cuda()
@@ -225,6 +231,7 @@ class NQLearner:
 
     def load_models(self, path):
         self.mac.load_models(path)
+        # Not quite right but I don't want to save target networks
         self.target_mac.load_models(path)
         if self.mixer is not None:
             self.mixer.load_state_dict(torch.load("{}/mixer.th".format(path), map_location=lambda storage, loc: storage))

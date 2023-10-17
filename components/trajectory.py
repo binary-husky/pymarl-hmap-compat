@@ -350,7 +350,7 @@ class OffPolicyTrajManager(TrajManagerBase):
                 ), axis=0) for traj in traj_pool ]
             set_item = stack_padding(stack_buff, padding)
 
-        elif '+dupl' in method:
+        elif '+dupl':
             # [0,1,2,3,4] --> [0,1,2,3,4,4] 
             stack_buff = []
             for traj in traj_pool:
@@ -359,7 +359,7 @@ class OffPolicyTrajManager(TrajManagerBase):
                 stack_buff.append(key_traj)
             set_item = stack_padding(stack_buff, padding)
 
-        elif '+zero' in method:
+        elif '+zero':
             # [0,1,2,3,4] --> [0,1,2,3,4,4] 
             stack_buff = []
             for traj in traj_pool:
@@ -368,7 +368,7 @@ class OffPolicyTrajManager(TrajManagerBase):
                 stack_buff.append(key_traj)
             set_item = stack_padding(stack_buff, padding)
 
-        elif '+nan' in method:
+        elif '+nan':
             # [0,1,2,3,4] --> [0,1,2,3,4,4] 
             stack_buff = []
             for traj in traj_pool:

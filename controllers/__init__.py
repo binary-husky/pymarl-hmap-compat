@@ -17,3 +17,5 @@ REGISTRY["cqmix_mac"] = CQMixMAC
 
 from .my_n_controller import my_NMAC
 REGISTRY["n_mac"] = my_NMAC
+from .n_controller import NMAC as old_NMAC
+REGISTRY["old_n_mac"] = old_NMAC

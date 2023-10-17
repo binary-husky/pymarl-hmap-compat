@@ -25,8 +25,9 @@ import torch.nn.init as init
 '''
 
 class NRNNAgent(nn.Module):
-    def __init__(self, input_shape, rnn_hidden_dim, n_actions):
+    def __init__(self, input_shape, args):
         super(NRNNAgent, self).__init__()
+        rnn_hidden_dim, n_actions = args.rnn_hidden_dim, args.n_actions
         self.rnn_hidden_dim = rnn_hidden_dim
         self.fc1 = nn.Linear(input_shape, rnn_hidden_dim)
         self.rnn = nn.GRUCell(rnn_hidden_dim, rnn_hidden_dim)
