@@ -105,7 +105,11 @@ class BasicMAC:
 
     def _build_agents(self, input_shape):
         from modules.agents.n_rnn_agent import NRNNAgent
-        self.agent = NRNNAgent(input_shape, PymarlAlgorithmConfig.agent_rnn_hidden_dim, self.args.n_actions)
+        class Temp(object): ...
+        args = Temp()
+        args.rnn_hidden_dim = PymarlAlgorithmConfig.agent_rnn_hidden_dim
+        args.n_actions = self.args.n_actions
+        self.agent = NRNNAgent(input_shape, args)
 
     def _build_inputs(self, batch, t, get_vae_loss=False, valid_mask=None):
         # Assumes homogenous agents with flat observations.
