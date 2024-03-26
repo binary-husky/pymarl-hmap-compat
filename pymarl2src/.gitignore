@@ -1,0 +1,13 @@
+__pycache__/
+TEMP/
+*.pyc
+*.so
+*.swf
+*.air
+*.ipa
+*.apk
+*.pyd
+*.glock
+*.mp3
+*.png
+*.pt
